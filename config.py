@@ -1,8 +1,8 @@
 # paths
-qa_path = 'vqa'  # directory containing the question and annotation jsons
-train_path = 'mscoco/train2014'  # directory of training images
-val_path = 'mscoco/val2014'  # directory of validation images
-test_path = 'mscoco/test2015'  # directory of test images
+qa_path = 'data/qa'  # directory containing the question and annotation jsons
+train_path = 'data/mscoco/train2014'  # directory of training images
+val_path = 'data/mscoco/val2014'  # directory of validation images
+test_path = 'data/mscoco/test2015'  # directory of test images
 preprocessed_path = './resnet-14x14.h5'  # path where preprocessed features are saved to and loaded from
 vocabulary_path = 'vocab.json'  # path where the used vocabularies for question and answers are saved to
 
@@ -21,5 +21,5 @@ epochs = 50
 batch_size = 128
 initial_lr = 1e-3  # default Adam lr
 lr_halflife = 50000  # in iterations
-data_workers = 8
+data_workers = 4
 max_answers = 3000

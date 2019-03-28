@@ -1,5 +1,6 @@
 import h5py
 from torch.autograd import Variable
+import torch
 import torch.nn as nn
 import torch.backends.cudnn as cudnn
 import torch.utils.data
@@ -43,30 +44,31 @@ def create_coco_loader(*paths):
 def main():
     cudnn.benchmark = True
 
-    net = Net().cuda()
-    net.eval()
+    with torch.no_grad():
+	    net = Net().cuda()
+	    net.eval()
 
-    loader = create_coco_loader(config.train_path, config.val_path)
-    features_shape = (
-        len(loader.dataset),
-        config.output_features,
-        config.output_size,
-        config.output_size
-    )
+	    loader = create_coco_loader(config.train_path, config.val_path)
+	    features_shape = (
+	        len(loader.dataset),
+	        config.output_features,
+	        config.output_size,
+	        config.output_size
+	    )
 
-    with h5py.File(config.preprocessed_path, libver='latest') as fd:
-        features = fd.create_dataset('features', shape=features_shape, dtype='float16')
-        coco_ids = fd.create_dataset('ids', shape=(len(loader.dataset),), dtype='int32')
+	    with h5py.File(config.preprocessed_path, libver='latest') as fd:
+	        features = fd.create_dataset('features', shape=features_shape, dtype='float16')
+	        coco_ids = fd.create_dataset('ids', shape=(len(loader.dataset),), dtype='int32')
 
-        i = j = 0
-        for ids, imgs in tqdm(loader):
-            imgs = Variable(imgs.cuda(async=True), volatile=True)
-            out = net(imgs)
+	        i = j = 0
+	        for ids, imgs in tqdm(loader):
+	            imgs = Variable(imgs.cuda(async=True), volatile=True)
+	            out = net(imgs)
 
-            j = i + imgs.size(0)
-            features[i:j, :, :] = out.data.cpu().numpy().astype('float16')
-            coco_ids[i:j] = ids.numpy().astype('int32')
-            i = j
+	            j = i + imgs.size(0)
+	            features[i:j, :, :] = out.data.cpu().numpy().astype('float16')
+	            coco_ids[i:j] = ids.numpy().astype('int32')
+	            i = j
 
 
 if __name__ == '__main__':
