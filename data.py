@@ -116,7 +116,7 @@ class VQA(data.Dataset):
                 answerable.append(i)
         return answerable
 
-    def _encode_questions(questions, seq_length)
+    def _encode_questions(questions, seq_length):
         tokenizer = BertTokenizer.from_pretrained(args.bert_model, do_lower_case=args.do_lower_case)
         features = []
         for (ex_index, example) in enumerate(questions):
