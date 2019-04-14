@@ -5,7 +5,7 @@ import itertools
 import config
 import data
 import utils
-
+import h5py
 
 def extract_vocab(iterable, top_k=None, start=0):
     """ Turns an iterable of list of tokens into a vocabulary.
@@ -27,6 +27,7 @@ def extract_vocab(iterable, top_k=None, start=0):
 def main():
     questions = utils.path_for(train=True, question=True)
     answers = utils.path_for(train=True, answer=True)
+    tokenizer = BertTokenizer.from_pretrained(args.bert_model, do_lower_case=args.do_lower_case)
 
     with open(questions, 'r') as fd:
         questions = json.load(fd)

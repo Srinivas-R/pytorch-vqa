@@ -16,6 +16,10 @@ output_size = image_size // 32  # size of the feature maps after processing thro
 output_features = 2048  # number of feature maps thereof
 central_fraction = 0.875  # only take this much of the centre when scaling and centre cropping
 
+#other options
+bert_model = 'bert-base-uncased'
+do_lower_case = True
+
 # training config
 epochs = 50
 batch_size = 32

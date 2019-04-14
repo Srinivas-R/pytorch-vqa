@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
 from torch.nn.utils.rnn import pack_padded_sequence
+from pytorch_pretrained_bert.modeling import BertModel
 
 import config
 
@@ -15,16 +16,13 @@ class Net(nn.Module):
 
     def __init__(self, embedding_tokens):
         super(Net, self).__init__()
-        question_features = 1024
         vision_features = config.output_features
         glimpses = 2
+        bertModel = BertModel.from_pretrained(config.bert_model, do_lower_case=config.do_lower_case)
+        question_features = bertModel.config.hidden_size
 
-        self.text = TextProcessor(
-            embedding_tokens=embedding_tokens,
-            embedding_features=300,
-            lstm_features=question_features,
-            drop=0.5,
-        )
+        self.text = BertTextProcessor(bertModel)
+
         self.attention = Attention(
             v_features=vision_features,
             q_features=question_features,
@@ -45,8 +43,8 @@ class Net(nn.Module):
                 if m.bias is not None:
                     m.bias.data.zero_()
 
-    def forward(self, v, q, q_len):
-        q = self.text(q, list(q_len.data))
+    def forward(self, v, q_inputs, q_masks):
+        q = self.text(q_inputs, q_masks)
 
         v = v / (v.norm(p=2, dim=1, keepdim=True).expand_as(v) + 1e-8)
         a = self.attention(v, q)
@@ -96,6 +94,13 @@ class TextProcessor(nn.Module):
         _, (_, c) = self.lstm(packed)
         return c.squeeze(0)
 
+class BertTextProcessor(nn.Module):
+    def __init__(self, bertModel):
+        super().__init__()
+        self.bertModel = bertModel
+    def forward(self, q_input_ids, q_input_mask):
+        all_encoder_layers, pooled_output = model(q_input_ids, token_type_ids=None, attention_mask=q_input_mask)
+        return pooled_output
 
 class Attention(nn.Module):
     def __init__(self, v_features, q_features, mid_features, glimpses, drop=0.0):

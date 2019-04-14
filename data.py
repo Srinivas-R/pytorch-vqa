@@ -8,11 +8,21 @@ import h5py
 import torch
 import torch.utils.data as data
 import torchvision.transforms as transforms
+from pytorch_pretrained_bert.tokenization import BertTokenizer
 
 import config
 import utils
 
 
+class InputFeatures(object):
+    """A set of features of single question example"""
+
+    def __init__(self, unique_id, tokens, input_ids, input_mask):
+        self.question_id = unique_id
+        self.tokens = tokens
+        self.input_ids = input_ids
+        self.input_mask = input_mask
+        
 def get_loader(train=False, val=False, test=False):
     """ Returns a data loader for the desired split """
     assert train + val + test == 1, 'need to set exactly one of {train, val, test} to True'
@@ -27,16 +37,9 @@ def get_loader(train=False, val=False, test=False):
         batch_size=config.batch_size,
         shuffle=train,  # only shuffle the data in training
         pin_memory=True,
-        num_workers=config.data_workers,
-        collate_fn=collate_fn,
+        num_workers=config.data_workers
     )
     return loader
-
-
-def collate_fn(batch):
-    # put question lengths in descending order so that we can use packed sequences later
-    batch.sort(key=lambda x: x[-1], reverse=True)
-    return data.dataloader.default_collate(batch)
 
 
 class VQA(data.Dataset):
@@ -57,9 +60,15 @@ class VQA(data.Dataset):
         self.answer_to_index = self.vocab['answer']
 
         # q and a
+        #normalize q & a
         self.questions = list(prepare_questions(questions_json))
         self.answers = list(prepare_answers(answers_json))
-        self.questions = [self._encode_question(q) for q in self.questions]
+        
+        #let's do the bert tokenization and other preprocessing (input/segment ids/mask) here
+        self.question_features = self._encode_questions(self.questions)
+        self.question_input_ids = torch.tensor([f.input_ids for f in self.question_features], dtype=torch.long)
+        self.question_input_mask = torch.tensor([f.input_mask for f in self.question_features], dtype=torch.long)
+        #creates a many-hot encoding like vector for answers, based on human responses
         self.answers = [self._encode_answers(a) for a in self.answers]
 
         # v
@@ -107,13 +116,48 @@ class VQA(data.Dataset):
                 answerable.append(i)
         return answerable
 
-    def _encode_question(self, question):
-        """ Turn a question into a vector of indices and a question length """
-        vec = torch.zeros(self.max_question_length).long()
-        for i, token in enumerate(question):
-            index = self.token_to_index.get(token, 0)
-            vec[i] = index
-        return vec, len(question)
+    def _encode_questions(questions, seq_length)
+        tokenizer = BertTokenizer.from_pretrained(args.bert_model, do_lower_case=args.do_lower_case)
+        features = []
+        for (ex_index, example) in enumerate(questions):
+            tokens_a = tokenizer.tokenize(example)
+
+            if len(tokens_a) > seq_length - 2:
+                tokens_a = tokens_a[0:(seq_length - 2)]
+
+            tokens = []
+            tokens.append("[CLS]")
+            for token in tokens_a:
+                tokens.append(token)
+            tokens.append("[SEP]")
+            
+            input_ids = tokenizer.convert_tokens_to_ids(tokens)
+
+            # The mask has 1 for real tokens and 0 for padding tokens. Only real
+            # tokens are attended to.
+            input_mask = [1] * len(input_ids)
+
+            # Zero-pad up to the sequence length.
+            while len(input_ids) < seq_length:
+                input_ids.append(0)
+                input_mask.append(0)
+            
+            assert len(input_ids) == seq_length
+            assert len(input_mask) == seq_length
+            
+            if ex_index < 5:
+                logger.info("*** Example ***")
+                logger.info("tokens: %s" % " ".join([str(x) for x in tokens]))
+                logger.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
+                logger.info("input_mask: %s" % " ".join([str(x) for x in input_mask]))
+            
+            features.append(
+                InputFeatures(
+                    unique_id=ex_index,
+                    tokens=tokens,
+                    input_ids=input_ids,
+                    input_mask=input_mask))
+        return features
 
     def _encode_answers(self, answers):
         """ Turn an answer into a vector """
@@ -144,14 +188,15 @@ class VQA(data.Dataset):
             # change of indices to only address answerable questions
             item = self.answerable[item]
 
-        q, q_length = self.questions[item]
+        q_input = self.question_input_ids[item]
+        q_mask = self.question_input_mask[item]
         a = self.answers[item]
         image_id = self.coco_ids[item]
         v = self._load_image(image_id)
         # since batches are re-ordered for PackedSequence's, the original question order is lost
         # we return `item` so that the order of (v, q, a) triples can be restored if desired
         # without shuffling in the dataloader, these will be in the order that they appear in the q and a json's.
-        return v, q, a, item, q_length
+        return v, q_input, q_mask, a, item
 
     def __len__(self):
         if self.answerable_only:
@@ -176,7 +221,7 @@ def prepare_questions(questions_json):
     questions = [q['question'] for q in questions_json['questions']]
     for question in questions:
         question = question.lower()[:-1]
-        yield question.split(' ')
+        yield question
 
 
 def prepare_answers(answers_json):

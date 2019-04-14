@@ -15,6 +15,8 @@ import data
 import model
 import utils
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 
 def update_learning_rate(optimizer, iteration):
     lr = config.initial_lr * 0.5**(float(iteration) / config.lr_halflife)
@@ -42,17 +44,13 @@ def run(net, loader, optimizer, tracker, train=False, prefix='', epoch=0):
     acc_tracker = tracker.track('{}_acc'.format(prefix), tracker_class(**tracker_params))
 
     log_softmax = nn.LogSoftmax(dim=1).cuda()
-    for v, q, a, idx, q_len in tq:
-        var_params = {
-            'volatile': not train,
-            'requires_grad': False,
-        }
-        v = Variable(v.cuda(async=True), **var_params)
-        q = Variable(q.cuda(async=True), **var_params)
-        a = Variable(a.cuda(async=True), **var_params)
-        q_len = Variable(q_len.cuda(async=True), **var_params)
-
-        out = net(v, q, q_len)
+    for v, q_inputs, q_masks, a, idx in tq:
+        v = v.to(device, non_blocking=True)
+        q_inputs = q_inputs.to(device, non_blocking=True)
+        q_masks = q_masks.to(device, non_blocking=True)
+        a = a.to(device, non_blocking=True)
+        
+        out = net(v, q_inputs, q_masks)
         nll = -log_softmax(out)
         loss = (nll * a / 10).sum(dim=1).mean()
         acc = utils.batch_accuracy(out.data, a.data).cpu()
