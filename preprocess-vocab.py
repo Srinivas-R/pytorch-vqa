@@ -25,24 +25,16 @@ def extract_vocab(iterable, top_k=None, start=0):
 
 
 def main():
-    questions = utils.path_for(train=True, question=True)
     answers = utils.path_for(train=True, answer=True)
-    tokenizer = BertTokenizer.from_pretrained(args.bert_model, do_lower_case=args.do_lower_case)
-
-    with open(questions, 'r') as fd:
-        questions = json.load(fd)
+    
     with open(answers, 'r') as fd:
         answers = json.load(fd)
 
-    questions = data.prepare_questions(questions)
     answers = data.prepare_answers(answers)
-
-    question_vocab = extract_vocab(questions, start=1)
     answer_vocab = extract_vocab(answers, top_k=config.max_answers)
 
     vocabs = {
-        'question': question_vocab,
-        'answer': answer_vocab,
+        'answer': answer_vocab
     }
     with open(config.vocabulary_path, 'w') as fd:
         json.dump(vocabs, fd)

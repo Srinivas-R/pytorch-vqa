@@ -14,7 +14,7 @@ class Net(nn.Module):
     [0]: https://arxiv.org/abs/1704.03162
     """
 
-    def __init__(self, embedding_tokens):
+    def __init__(self):
         super(Net, self).__init__()
         vision_features = config.output_features
         glimpses = 2

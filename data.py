@@ -56,7 +56,7 @@ class VQA(data.Dataset):
 
         # vocab
         self.vocab = vocab_json
-        self.token_to_index = self.vocab['question']
+        #self.token_to_index = self.vocab['question']
         self.answer_to_index = self.vocab['answer']
 
         # q and a
@@ -87,10 +87,7 @@ class VQA(data.Dataset):
             self._max_length = max(map(len, self.questions))
         return self._max_length
 
-    @property
-    def num_tokens(self):
-        return len(self.token_to_index) + 1  # add 1 for <unknown> token at index 0
-
+    
     def _create_coco_id_to_index(self):
         """ Create a mapping from a COCO image id into the corresponding index into the h5 file """
         with h5py.File(self.image_features_path, 'r') as features_file:
