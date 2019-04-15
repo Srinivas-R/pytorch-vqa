@@ -113,8 +113,9 @@ class VQA(data.Dataset):
                 answerable.append(i)
         return answerable
 
-    def _encode_questions(questions, seq_length):
-        tokenizer = BertTokenizer.from_pretrained(args.bert_model, do_lower_case=args.do_lower_case)
+    def _encode_questions(self, questions):
+        seq_length = config.seq_length
+        tokenizer = BertTokenizer.from_pretrained(config.bert_model, do_lower_case=config.do_lower_case)
         features = []
         for (ex_index, example) in enumerate(questions):
             tokens_a = tokenizer.tokenize(example)
@@ -142,11 +143,11 @@ class VQA(data.Dataset):
             assert len(input_ids) == seq_length
             assert len(input_mask) == seq_length
             
-            if ex_index < 5:
-                logger.info("*** Example ***")
-                logger.info("tokens: %s" % " ".join([str(x) for x in tokens]))
-                logger.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
-                logger.info("input_mask: %s" % " ".join([str(x) for x in input_mask]))
+            # if ex_index < 5:
+            #     print("*** Example ***")
+            #     print("tokens: %s" % " ".join([str(x) for x in tokens]))
+            #     print("input_ids: %s" % " ".join([str(x) for x in input_ids]))
+            #     print("input_mask: %s" % " ".join([str(x) for x in input_mask]))
             
             features.append(
                 InputFeatures(

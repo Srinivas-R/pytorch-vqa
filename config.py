@@ -16,12 +16,13 @@ output_size = image_size // 32  # size of the feature maps after processing thro
 output_features = 2048  # number of feature maps thereof
 central_fraction = 0.875  # only take this much of the centre when scaling and centre cropping
 
-#other options
+#bert options
 bert_model = 'bert-base-uncased'
 do_lower_case = True
+seq_length=128
 
 # training config
-epochs = 50
+epochs = 20
 batch_size = 32
 initial_lr = 1e-3  # default Adam lr
 lr_halflife = 50000  # in iterations

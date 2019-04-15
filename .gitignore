@@ -6,3 +6,4 @@ resnet-14x14.h5
 vocab.json
 *.pth
 resnet/*.pth
+*.png

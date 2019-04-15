@@ -18,7 +18,7 @@ class Net(nn.Module):
         super(Net, self).__init__()
         vision_features = config.output_features
         glimpses = 2
-        bertModel = BertModel.from_pretrained(config.bert_model, do_lower_case=config.do_lower_case)
+        bertModel = BertModel.from_pretrained(config.bert_model)
         question_features = bertModel.config.hidden_size
 
         self.text = BertTextProcessor(bertModel)
@@ -99,7 +99,7 @@ class BertTextProcessor(nn.Module):
         super().__init__()
         self.bertModel = bertModel
     def forward(self, q_input_ids, q_input_mask):
-        all_encoder_layers, pooled_output = model(q_input_ids, token_type_ids=None, attention_mask=q_input_mask)
+        all_encoder_layers, pooled_output = self.bertModel(q_input_ids, token_type_ids=None, attention_mask=q_input_mask)
         return pooled_output
 
 class Attention(nn.Module):
