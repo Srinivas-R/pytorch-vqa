@@ -17,11 +17,9 @@ class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
         vision_features = config.output_features
+        question_features = config.question_features
         glimpses = 2
-        bertModel = BertModel.from_pretrained(config.bert_model)
-        question_features = bertModel.config.hidden_size
-
-        self.text = BertTextProcessor(bertModel)
+        self.text = BertTextProcessor()
 
         self.attention = Attention(
             v_features=vision_features,
@@ -44,7 +42,7 @@ class Net(nn.Module):
                     m.bias.data.zero_()
 
     def forward(self, v, q_inputs, q_masks):
-        q = self.text(q_inputs, q_masks)
+        q = self.text(q_inputs, q_masks).detach()
 
         v = v / (v.norm(p=2, dim=1, keepdim=True).expand_as(v) + 1e-8)
         a = self.attention(v, q)
@@ -87,20 +85,20 @@ class TextProcessor(nn.Module):
         for w in weight.chunk(4, 0):
             init.xavier_uniform_(w)
 
-    def forward(self, q, q_len):
+    def forward(self, q):
         embedded = self.embedding(q)
         tanhed = self.tanh(self.drop(embedded))
-        packed = pack_padded_sequence(tanhed, q_len, batch_first=True)
-        _, (_, c) = self.lstm(packed)
+        #packed = pack_padded_sequence(tanhed, q_len, batch_first=True)
+        _, (_, c) = self.lstm(tanhed)
         return c.squeeze(0)
 
 class BertTextProcessor(nn.Module):
-    def __init__(self, bertModel):
+    def __init__(self):
         super().__init__()
-        self.bertModel = bertModel
+        self.bertModel = BertModel.from_pretrained(config.bert_model)
     def forward(self, q_input_ids, q_input_mask):
-        all_encoder_layers, pooled_output = self.bertModel(q_input_ids, token_type_ids=None, attention_mask=q_input_mask)
-        return pooled_output
+        all_encoder_layers, pooled_output = self.bertModel(q_input_ids, token_type_ids=None, attention_mask=q_input_mask, output_all_encoded_layers=False)
+        return torch.randn_like(all_encoder_layers.mean(dim=1))
 
 class Attention(nn.Module):
     def __init__(self, v_features, q_features, mid_features, glimpses, drop=0.0):

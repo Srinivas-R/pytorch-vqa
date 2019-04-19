@@ -2,8 +2,9 @@ __pycache__
 *.pyc
 vqa
 data
-resnet-14x14.h5
-vocab.json
+*.h5
+*.json
 *.pth
 resnet/*.pth
 *.png
+vqa_small
