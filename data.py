@@ -37,10 +37,15 @@ def get_loader(train=False, val=False, test=False):
         batch_size=config.batch_size,
         shuffle=train,  # only shuffle the data in training
         pin_memory=True,
-        num_workers=config.data_workers
+        num_workers=config.data_workers,
+        collate_fn=collate_fn
     )
     return loader
 
+def collate_fn(batch):
+    # put question lengths in descending order so that we can use packed sequences later
+    batch.sort(key=lambda x: x[-3].sum(), reverse=True)
+    return data.dataloader.default_collate(batch)
 
 class VQA(data.Dataset):
     """ VQA dataset, open-ended """

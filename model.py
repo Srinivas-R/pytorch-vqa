@@ -18,22 +18,41 @@ class Net(nn.Module):
         super(Net, self).__init__()
         vision_features = config.output_features
         question_features = config.question_features
-        glimpses = 2
         self.text = BertTextProcessor()
-
-        self.attention = Attention(
-            v_features=vision_features,
-            q_features=question_features,
-            mid_features=512,
-            glimpses=2,
-            drop=0.5,
+        self.attention = BertAttention(
+            dim1=question_features,
+            dim2=config.output_size ** 2
         )
         self.classifier = Classifier(
-            in_features=glimpses * vision_features + question_features,
+            in_features=config.output_size ** 2 + question_features,
             mid_features=1024,
             out_features=config.max_answers,
-            drop=0.5,
+            drop=0.5
         )
+
+        # question_features = 1024
+        # self.text = TextProcessor(
+        #     embedding_tokens=30522,
+        #     embedding_features=300,
+        #     lstm_features=question_features,
+        #     drop=0.5,
+        # )
+
+        # glimpses = 2
+        # self.attention = Attention(
+        #     v_features=vision_features,
+        #     q_features=question_features,
+        #     mid_features=512,
+        #     glimpses=glimpses,
+        #     drop=0.5,
+        # )
+
+        # self.classifier = Classifier(
+        #     in_features=glimpses * vision_features + question_features,
+        #     mid_features=1024,
+        #     out_features=config.max_answers,
+        #     drop=0.5,
+        # )
 
         for m in self.modules():
             if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d):
@@ -42,13 +61,14 @@ class Net(nn.Module):
                     m.bias.data.zero_()
 
     def forward(self, v, q_inputs, q_masks):
-        q = self.text(q_inputs, q_masks).detach()
-
+        q = self.text(q_inputs, q_masks)
         v = v / (v.norm(p=2, dim=1, keepdim=True).expand_as(v) + 1e-8)
-        a = self.attention(v, q)
-        v = apply_attention(v, a)
+        attention_mask = ((1.0 - q_masks) * -10000).float()
+        v = v.view(v.shape[0], v.shape[1], -1)
+        q_attended, v_attended = self.attention(q, v, attention_mask)
+        #v = apply_attention(v, a)
 
-        combined = torch.cat([v, q], dim=1)
+        combined = torch.cat([q_attended, v_attended], dim=1)
         answer = self.classifier(combined)
         return answer
 
@@ -85,20 +105,53 @@ class TextProcessor(nn.Module):
         for w in weight.chunk(4, 0):
             init.xavier_uniform_(w)
 
-    def forward(self, q):
+    def forward(self, q, q_mask):
+        q_len = q_mask.sum(dim=1)
         embedded = self.embedding(q)
         tanhed = self.tanh(self.drop(embedded))
-        #packed = pack_padded_sequence(tanhed, q_len, batch_first=True)
-        _, (_, c) = self.lstm(tanhed)
+        packed = pack_padded_sequence(tanhed, q_len, batch_first=True)
+        _, (_, c) = self.lstm(packed)
         return c.squeeze(0)
 
 class BertTextProcessor(nn.Module):
     def __init__(self):
         super().__init__()
-        self.bertModel = BertModel.from_pretrained(config.bert_model)
+        self.bertModel = BertModel.from_pretrained(config.bert_model, cache_dir='/home/ubuntu/ssd/pytorch-vqa/pytorch_pretrained_bert/bert_model_cache')
     def forward(self, q_input_ids, q_input_mask):
+        self.bertModel.eval()
         all_encoder_layers, pooled_output = self.bertModel(q_input_ids, token_type_ids=None, attention_mask=q_input_mask, output_all_encoded_layers=False)
-        return torch.randn_like(all_encoder_layers.mean(dim=1))
+        return all_encoder_layers.detach()
+
+#let's make a simplistic 2D attention mechanism first, uses max activation
+class BertAttention(nn.Module):
+    def __init__(self, dim1, dim2):
+        super().__init__()
+        self.dim1 = dim1
+        self.dim2 = dim2
+        self.W = nn.Linear(dim1, dim2, bias=False)
+        self.softmax = nn.Softmax(dim=-1)
+    def forward(self, X, Y, attention_mask):
+        """
+        Input:
+        X (param, queries) : batch_size x m x dim1 
+        Y (param, contexts) : batch_size x n x dim2
+        attention_mask (for X): batch_size x m
+        Returns:
+        X_attended: batch_size x dim1
+        Y_attended: batch_size x dim2
+        """
+        bs, m, dim1 = X.shape
+        bs, n, dim2 = Y.shape
+        affinity_matrix = torch.bmm(self.W(X.view(bs * m, dim1)).view(bs, m, dim2), Y.transpose(1,2))
+        pool_X, _ = affinity_matrix.max(dim=2)
+        masked_pool_X = pool_X + attention_mask
+        pool_Y, _ = affinity_matrix.max(dim=1)
+        X_attention_weights = self.softmax(masked_pool_X)
+        Y_attention_weights = self.softmax(pool_Y)
+        X_attended = (X_attention_weights.unsqueeze(2).expand_as(X) * X).sum(dim=1)
+        Y_attended = (Y_attention_weights.unsqueeze(2).expand_as(Y) * Y).sum(dim=1)
+        return X_attended, Y_attended
+
 
 class Attention(nn.Module):
     def __init__(self, v_features, q_features, mid_features, glimpses, drop=0.0):
@@ -117,7 +170,6 @@ class Attention(nn.Module):
         x = self.relu(v + q)
         x = self.x_conv(self.drop(x))
         return x
-
 
 def apply_attention(input, attention):
     """ Apply any number of attention maps over the input. """

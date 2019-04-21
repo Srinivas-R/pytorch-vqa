@@ -31,7 +31,7 @@ def run(net, loader, optimizer, tracker, train=False, prefix='', epoch=0):
     """ Run an epoch over the given loader """
     if train:
         net.train()
-        tracker_class, tracker_params = tracker.MovingMeanMonitor, {'momentum': 0.99}
+        tracker_class, tracker_params = tracker.MeanMonitor, {}
     else:
         net.eval()
         tracker_class, tracker_params = tracker.MeanMonitor, {}
@@ -44,6 +44,7 @@ def run(net, loader, optimizer, tracker, train=False, prefix='', epoch=0):
     acc_tracker = tracker.track('{}_acc'.format(prefix), tracker_class(**tracker_params))
 
     log_softmax = nn.LogSoftmax(dim=1).cuda()
+    #acc_Epoch = 0.0
     for v, q_inputs, q_masks, a, idx in tq:
         v = v.to(device, non_blocking=True)
         q_inputs = q_inputs.to(device, non_blocking=True)
@@ -54,6 +55,7 @@ def run(net, loader, optimizer, tracker, train=False, prefix='', epoch=0):
         nll = -log_softmax(out)
         loss = (nll * a / 10).sum(dim=1).mean()
         acc = utils.batch_accuracy(out.data, a.data).cpu()
+        #acc_Epoch += acc
 
         if train:
             global total_iterations
@@ -83,6 +85,8 @@ def run(net, loader, optimizer, tracker, train=False, prefix='', epoch=0):
         accs = list(torch.cat(accs, dim=0))
         idxs = list(torch.cat(idxs, dim=0))
         return answ, accs, idxs
+
+    #print(acc_Epoch)
 
 
 def main():
