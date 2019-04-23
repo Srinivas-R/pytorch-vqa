@@ -18,7 +18,7 @@ class Net(nn.Module):
         super(Net, self).__init__()
         vision_features = config.output_features
         question_features = config.question_features
-        self.text = BertTextProcessor()
+        #self.text = BertTextProcessor()
         self.attention = BertAttention(
             dim1=question_features,
             dim2=config.output_size ** 2
@@ -30,13 +30,13 @@ class Net(nn.Module):
             drop=0.5
         )
 
-        # question_features = 1024
-        # self.text = TextProcessor(
-        #     embedding_tokens=30522,
-        #     embedding_features=300,
-        #     lstm_features=question_features,
-        #     drop=0.5,
-        # )
+        question_features = 1024
+        self.text = TextProcessor(
+            embedding_tokens=30522,
+            embedding_features=300,
+            lstm_features=question_features,
+            drop=0.5,
+        )
 
         # glimpses = 2
         # self.attention = Attention(
@@ -130,6 +130,7 @@ class BertAttention(nn.Module):
         self.dim2 = dim2
         self.W = nn.Linear(dim1, dim2, bias=False)
         self.softmax = nn.Softmax(dim=-1)
+        self.tanh = nn.Tanh()
     def forward(self, X, Y, attention_mask):
         """
         Input:
@@ -142,7 +143,7 @@ class BertAttention(nn.Module):
         """
         bs, m, dim1 = X.shape
         bs, n, dim2 = Y.shape
-        affinity_matrix = torch.bmm(self.W(X.view(bs * m, dim1)).view(bs, m, dim2), Y.transpose(1,2))
+        affinity_matrix = self.tanh(torch.bmm(self.W(X.view(bs * m, dim1)).view(bs, m, dim2), Y.transpose(1,2)))
         pool_X, _ = affinity_matrix.max(dim=2)
         masked_pool_X = pool_X + attention_mask
         pool_Y, _ = affinity_matrix.max(dim=1)
