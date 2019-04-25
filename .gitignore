@@ -5,7 +5,6 @@ data
 *.h5
 *.json
 *.pth
-resnet/*.pth
 *.png
 vqa_small
 *cache*
