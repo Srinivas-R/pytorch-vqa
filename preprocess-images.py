@@ -10,7 +10,7 @@ from tqdm import tqdm
 import config
 import data
 import utils
-from resnet import resnet as caffe_resnet
+from pytorch-resnet import resnet as caffe_resnet
 
 
 class Net(nn.Module):
