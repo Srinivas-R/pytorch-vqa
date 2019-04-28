@@ -21,9 +21,8 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 def update_learning_rate(optimizer, iteration):
     lr = config.initial_lr * 0.5**(float(iteration) / config.lr_halflife)
     for param_group in optimizer.param_groups:
-        param_group['lr'] = lr
-
-
+        if param_group['lr'] != config.bert_lr:
+            param_group['lr'] = lr
 total_iterations = 0
 
 
@@ -104,7 +103,10 @@ def main():
     val_loader = data.get_loader(val=True)
 
     net = nn.DataParallel(model.Net()).cuda()
-    optimizer = optim.Adam([p for p in net.parameters() if p.requires_grad])
+    optim_params= [ {'params' : net.module.text.parameters(), 'lr' : config.bert_lr},
+                    {'params' : net.module.attention.parameters(), 'lr' : config.initial_lr},
+                    {'params' : net.module.classifier.parameters(), 'lr' : config.initial_lr}]
+    optimizer = optim.Adam(optim_params)
 
     tracker = utils.Tracker()
     config_as_dict = {k: v for k, v in vars(config).items() if not k.startswith('__')}

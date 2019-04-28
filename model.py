@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
-from torch.nn.utils.rnn import pack_padded_sequence
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 from pytorch_pretrained_bert.modeling import BertModel
 
 import config
@@ -17,8 +17,16 @@ class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
         vision_features = config.output_features
+        
         question_features = config.question_features
-        #self.text = BertTextProcessor()
+        self.text = BertTextProcessor()
+        
+        # self.text = TextProcessor(
+        #     embedding_tokens=30522,
+        #     embedding_features=300,
+        #     lstm_features=question_features,
+        #     drop=0.5,
+        # )
         self.attention = BertAttention(
             dim1=question_features,
             dim2=config.output_size ** 2
@@ -30,14 +38,7 @@ class Net(nn.Module):
             drop=0.5
         )
 
-        question_features = 1024
-        self.text = TextProcessor(
-            embedding_tokens=30522,
-            embedding_features=300,
-            lstm_features=question_features,
-            drop=0.5,
-        )
-
+        
         # glimpses = 2
         # self.attention = Attention(
         #     v_features=vision_features,
@@ -91,7 +92,8 @@ class TextProcessor(nn.Module):
         self.tanh = nn.Tanh()
         self.lstm = nn.LSTM(input_size=embedding_features,
                             hidden_size=lstm_features,
-                            num_layers=1)
+                            num_layers=1,
+                            batch_first=True)
         self.features = lstm_features
 
         self._init_lstm(self.lstm.weight_ih_l0)
@@ -109,18 +111,24 @@ class TextProcessor(nn.Module):
         q_len = q_mask.sum(dim=1)
         embedded = self.embedding(q)
         tanhed = self.tanh(self.drop(embedded))
-        packed = pack_padded_sequence(tanhed, q_len, batch_first=True)
-        _, (_, c) = self.lstm(packed)
-        return c.squeeze(0)
+        #packed = pack_padded_sequence(tanhed, q_len, batch_first=True)
+        h, (_, _) = self.lstm(tanhed)
+        #unpacked, unpacked_len = pad_packed_sequence(h, batch_first=True)
+        return h.contiguous()
 
 class BertTextProcessor(nn.Module):
     def __init__(self):
         super().__init__()
-        self.bertModel = BertModel.from_pretrained(config.bert_model, cache_dir='/home/ubuntu/ssd/pytorch-vqa/pytorch_pretrained_bert/bert_model_cache')
+        self.bertModel = BertModel.from_pretrained(config.bert_model)
+        # self.lstm = nn.LSTM(input_size=self.bertModel.config.hidden_size,
+        #                     hidden_size=self.bertModel.config.hidden_size,
+        #                     num_layers=1,
+        #                     batch_first=True)
     def forward(self, q_input_ids, q_input_mask):
         self.bertModel.eval()
         all_encoder_layers, pooled_output = self.bertModel(q_input_ids, token_type_ids=None, attention_mask=q_input_mask, output_all_encoded_layers=False)
-        return all_encoder_layers.detach()
+        # h, (_, _) = self.lstm(all_encoder_layers.detach())
+        return all_encoder_layers
 
 #let's make a simplistic 2D attention mechanism first, uses max activation
 class BertAttention(nn.Module):
@@ -143,7 +151,8 @@ class BertAttention(nn.Module):
         """
         bs, m, dim1 = X.shape
         bs, n, dim2 = Y.shape
-        affinity_matrix = self.tanh(torch.bmm(self.W(X.view(bs * m, dim1)).view(bs, m, dim2), Y.transpose(1,2)))
+        firstMul = self.W(X.view(bs * m, dim1)).view(bs, m, dim2)
+        affinity_matrix = torch.bmm(firstMul, Y.transpose(1,2))
         pool_X, _ = affinity_matrix.max(dim=2)
         masked_pool_X = pool_X + attention_mask
         pool_Y, _ = affinity_matrix.max(dim=1)

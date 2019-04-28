@@ -10,7 +10,7 @@ from tqdm import tqdm
 import config
 import data
 import utils
-from pytorch-resnet import resnet as caffe_resnet
+from pytorch_resnet import resnet as caffe_resnet
 
 
 class Net(nn.Module):
@@ -62,7 +62,7 @@ def main():
 
 	        i = j = 0
 	        for ids, imgs in tqdm(loader):
-	            imgs = Variable(imgs.cuda(async=True), volatile=True)
+	            imgs = Variable(imgs.cuda(non_blocking=True), volatile=True)
 	            out = net(imgs)
 
 	            j = i + imgs.size(0)

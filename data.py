@@ -26,6 +26,7 @@ class InputFeatures(object):
 def get_loader(train=False, val=False, test=False):
     """ Returns a data loader for the desired split """
     assert train + val + test == 1, 'need to set exactly one of {train, val, test} to True'
+    print('starting dataset processing, Train : {}, Val : {}'.format(train, val))
     split = VQA(
         utils.path_for(train=train, val=val, test=test, question=True),
         utils.path_for(train=train, val=val, test=test, answer=True),

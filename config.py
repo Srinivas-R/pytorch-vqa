@@ -3,7 +3,7 @@ qa_path = 'data/qa'  # directory containing the question and annotation jsons
 train_path = 'data/mscoco/train2014'  # directory of training images
 val_path = 'data/mscoco/val2014'  # directory of validation images
 test_path = 'data/mscoco/test2015'  # directory of test images
-preprocessed_path = './resnet-14x14.h5'  # path where preprocessed features are saved to and loaded from
+preprocessed_path = '/mnt/disks/ssd/resnet-14x14.h5'  # path where preprocessed features are saved to and loaded from
 vocabulary_path = './vocab.json'  # path where the used vocabularies for question and answers are saved to
 
 task = 'OpenEnded'
@@ -21,11 +21,12 @@ bert_model = 'bert-base-uncased'
 do_lower_case = True
 seq_length=32
 question_features=768
+bert_lr = 2e-5
 
 # training config
 epochs = 120
 batch_size = 128
 initial_lr = 1e-3  # default Adam lr
 lr_halflife = 50000  # in iterations
-data_workers = 4
+data_workers = 8
 max_answers = 3000
