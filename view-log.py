@@ -15,6 +15,13 @@ def main():
     plt.plot(val_acc)
     plt.savefig('val_acc.png')
 
+    train_acc = torch.FloatTensor(results['tracker']['train_acc'])
+    train_acc = train_acc.mean(dim=1).numpy()
+
+    plt.figure()
+    plt.plot(train_acc)
+    plt.savefig('train_acc.png')
+
 
 if __name__ == '__main__':
     main()

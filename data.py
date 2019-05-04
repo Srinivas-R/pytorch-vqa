@@ -149,11 +149,11 @@ class VQA(data.Dataset):
             assert len(input_ids) == seq_length
             assert len(input_mask) == seq_length
             
-            # if ex_index < 5:
-            #     print("*** Example ***")
-            #     print("tokens: %s" % " ".join([str(x) for x in tokens]))
-            #     print("input_ids: %s" % " ".join([str(x) for x in input_ids]))
-            #     print("input_mask: %s" % " ".join([str(x) for x in input_mask]))
+            if ex_index < 5:
+                print("*** Example ***")
+                print("tokens: %s" % " ".join([str(x) for x in tokens]))
+                print("input_ids: %s" % " ".join([str(x) for x in input_ids]))
+                print("input_mask: %s" % " ".join([str(x) for x in input_mask]))
             
             features.append(
                 InputFeatures(
