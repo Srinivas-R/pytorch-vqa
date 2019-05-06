@@ -17,7 +17,6 @@ import utils
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-
 def update_learning_rate(optimizer, iteration):
     lr = config.initial_lr * 0.5**(float(iteration) / config.lr_halflife)
     for param_group in optimizer.param_groups:

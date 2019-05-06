@@ -22,12 +22,12 @@ bert_model = 'bert-base-uncased'
 do_lower_case = True
 seq_length=28
 question_features=1024
-bert_lr = 2e-5
+#bert_lr = 2e-5
 
 # training config
-epochs = 120
+epochs = 60
 batch_size = 128
 initial_lr = 1e-3  # default Adam lr
-lr_halflife = 40000  # in iterations
+lr_halflife = 50000  # in iterations
 data_workers = 8
 max_answers = 3000
