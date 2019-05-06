@@ -7,6 +7,7 @@ preprocessed_path = '/mnt/disks/ssd/resnet-14x14.h5'  # path where preprocessed 
 #preprocessed_path = 'resnet-14x14.h5'
 vocabulary_path = './vocab.json'  # path where the used vocabularies for question and answers are saved to
 
+prefix='v2_'
 task = 'OpenEnded'
 dataset = 'mscoco'
 
