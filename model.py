@@ -18,7 +18,7 @@ class Net(nn.Module):
         super(Net, self).__init__()
         vision_features = config.output_features
         question_features = config.question_features
-        self.positional_encodings = nn.Parameter(init.xavier_uniform_(torch.zeros(vision_features, config.output_size ** 2)))
+        self.positional_encodings = nn.Parameter(init.xavier_uniform_(torch.zeros(config.output_size ** 2, vision_features)))
 
         # self.text = BertTextProcessor()
         
